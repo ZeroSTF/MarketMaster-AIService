@@ -1,10 +1,8 @@
 from flask import Flask, request, jsonify
 from models import market_prediction, portfolio_optimization, sentiment_analysis, trading_strategy
-from config import config
 import os
 
 app = Flask(__name__)
-app.config.from_object(config[os.getenv('FLASK_ENV') or 'default'])
 
 @app.route('/predict_market', methods=['POST'])
 def predict_market():
