@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MarketMaster WebSocket Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io('http://localhost:5000');
+            const updates = document.getElementById('updates');
+
+            socket.on('connect', () => {
+                console.log('Connected to WebSocket');
+                addMessage('Connected to WebSocket');
+            });
+
+            socket.on('asset_update', (data) => {
+                console.log('Received update:', data);
+                addMessage(JSON.stringify(data, null, 2));
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from WebSocket');
+                addMessage('Disconnected from WebSocket');
+            });
+
+            function addMessage(message) {
+                const pre = document.createElement('pre');
+                pre.textContent = message;
+                updates.prepend(pre);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>MarketMaster WebSocket Test</h1>
+    <div id="updates"></div>
+</body>
+</html>

@@ -4,18 +4,48 @@ This project is a set of microservices for the MarketMaster project.
 
 ## To run this project:
 
-Make a virtual environment:
+### 1. Make a virtual environment:
+
+```bash
 python -m venv venv
+```
 
-Activate the virtual environment:
+### 2. Activate the virtual environment:
+
+```bash
 .\venv\Scripts\activate
+```
 
-Install the dependencies:
+### 3. Install the dependencies:
+
+```bash
 pip install -r requirements.txt
+```
 
-Run the project:
-python app.py
+### 4. Run the project:
 
-## To run the tests:
+```bash
+python run.py
+```
 
-python -m unittest tests/test_models.py
+## To run the visual websocket test client:
+
+### Open test_client.html in a web browser.
+
+## To run all of the tests:
+
+```bash
+./run_tests.sh
+```
+
+## To run the unit tests:
+
+```bash
+python -m unittest discover tests
+```
+
+## To run the integration tests:
+
+```bash
+python test_client.py
+```
