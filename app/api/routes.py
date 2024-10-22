@@ -1,5 +1,6 @@
 from flask import jsonify, request
 from ..utils.logger import logger
+from datetime import datetime
 
 def register_routes(app, socketio, asset_manager):
     @app.route('/api/assets/register', methods=['POST'])
@@ -42,6 +43,20 @@ def register_routes(app, socketio, asset_manager):
             return jsonify({'error': 'Asset not found'}), 404
         except Exception as e:
             logger.error(f"Error in remove_asset: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/test/fetch/<symbol>', methods=['GET'])
+    def test_fetch(symbol):
+        try:
+            data = asset_manager.data_fetcher.fetch_data(symbol)
+            logger.debug(f"Raw fetch data for {symbol}: {data}")
+            return jsonify({
+                'symbol': symbol,
+                'timestamp': datetime.now().isoformat(),
+                'data': data
+            })
+        except Exception as e:
+            logger.error(f"Error in test_fetch for {symbol}: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @socketio.on('connect')

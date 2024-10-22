@@ -42,10 +42,15 @@ class AssetManager:
         with self._lock:
             for symbol in list(self.asset_cache.keys()):
                 try:
-                    data = self.data_fetcher.fetch_data(symbol)
-                    self.asset_cache[symbol] = data
-                    self.socketio.emit('asset_update', data)
-                    logger.debug(f"Updated {symbol}")
+                    old_data = self.asset_cache[symbol]
+                    new_data = self.data_fetcher.fetch_data(symbol)
+                    
+                    if old_data != new_data.get('volume'):
+                        self.asset_cache[symbol] = new_data
+                        self.socketio.emit('asset_update', new_data)
+                        logger.info(f"Updated {symbol} with new volume {new_data.get('volume')}")
+                    else:
+                        logger.debug(f"No volume change for {symbol}")
                 except Exception as e:
                     logger.error(f"Error updating {symbol}: {str(e)}")
 
