@@ -1,8 +1,12 @@
+from app.core.acturial_calcul import ActuarialCalculator
 from flask import jsonify, request
 from ..utils.logger import logger
 from datetime import datetime
 
 def register_routes(app, socketio, asset_manager):
+      
+    actuarial_calculator = ActuarialCalculator()
+
     @app.route('/api/assets/register', methods=['POST'])
     def register_assets():
         try:
@@ -57,6 +61,20 @@ def register_routes(app, socketio, asset_manager):
             })
         except Exception as e:
             logger.error(f"Error in test_fetch for {symbol}: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/assets/premiums', methods=['POST'])
+    def get_suggested_premiums():
+        try:
+            data = request.get_json()
+            if not data or 'symbols' not in data:
+                return jsonify({'error': 'No symbols provided'}), 400
+            
+            symbols = data['symbols']
+            premiums = actuarial_calculator.calculate_suggested_premiums(symbols)
+            return jsonify(premiums)
+        except Exception as e:
+            logger.error(f"Error in get_suggested_premiums: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     @socketio.on('connect')
