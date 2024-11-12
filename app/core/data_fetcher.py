@@ -47,15 +47,15 @@ class YFinanceDataFetcher:
             
             # Adjust period based on interval to get enough data
             period_map = {
-                '1m': '7d',
-                '5m': '7d',
-                '15m': '7d',
-                '30m': '7d',
-                '1h': '1mo',
-                '4h': '1mo',
-                '1d': '3mo',
-                '1wk': '1y',
-                '1mo': '2y'
+                '1m': '5d',
+                '5m': '5d',
+                '15m': '5d',
+                '30m': '5d',
+                '1h': '2y',
+                '4h': 'max',
+                '1d': 'max',
+                '1wk': 'max',
+                '1mo': 'max'
             }
             hist_period = period_map.get(interval, '1mo')
             
