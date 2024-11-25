@@ -5,7 +5,7 @@ from datetime import datetime
 
 def register_routes(app, socketio, asset_manager):
       
-    actuarial_calculator = ActuarialCalculator()
+    actuarial_calculator = ActuarialCalculator(asset_manager=asset_manager)
 
     @app.route('/api/assets/register', methods=['POST'])
     def register_assets():
@@ -63,20 +63,20 @@ def register_routes(app, socketio, asset_manager):
             logger.error(f"Error in test_fetch for {symbol}: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/assets/premiums', methods=['POST'])
+    @app.route('/api/assets/premiums', methods=['GET'])
     def get_suggested_premiums():
         try:
-            data = request.get_json()
-            if not data or 'symbols' not in data:
-                return jsonify({'error': 'No symbols provided'}), 400
+            symbols = request.args.get('symbols', '').split(',')
+            symbols = [s.strip() for s in symbols if s.strip()]
             
-            symbols = data['symbols']
+            if not symbols:
+                return jsonify({'error': 'No symbols provided'}), 400
+                
             premiums = actuarial_calculator.calculate_suggested_premiums(symbols)
             return jsonify(premiums)
         except Exception as e:
-            logger.error(f"Error in get_suggested_premiums: {str(e)}")
+            logger.error(f"Error calculating premiums: {str(e)}")
             return jsonify({'error': str(e)}), 500
-
     @app.route('/api/assets/<symbol>/history', methods=['GET'])
     def get_asset_history(symbol):
         try:
