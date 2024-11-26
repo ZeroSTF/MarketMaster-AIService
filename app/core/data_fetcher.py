@@ -8,6 +8,32 @@ class YFinanceDataFetcher:
     def __init__(self, max_retries=Config.MAX_RETRIES):
         self.max_retries = max_retries
 
+    def fetch_data_between(self, symbol, start_date, end_date, interval="15m"):
+       ticker = yf.Ticker(symbol)
+       logger.info(f"Fetching data for {symbol} from {start_date} to {end_date} with {interval} interval")  # Debugging step
+    # Fetch data with specified interval
+       hist = ticker.history(start=start_date, end=end_date, interval=interval)
+       if hist.empty:
+           logger.warning(f"No data found for {symbol} in date range {start_date} to {end_date}")
+           return []
+       else:
+        # Convert to desired format, adding timestamp as key
+        formatted_data = []
+        for timestamp, row in hist.iterrows():
+            record = {
+                "Date": timestamp.isoformat(),
+                "Open": row["Open"],
+                "High": row["High"],
+                "Low": row["Low"],
+                "Close": row["Close"],
+                "Volume": row["Volume"]
+            }
+            formatted_data.append(record)
+        logger.info(f"Data fetched for {symbol}: {formatted_data}")  # Debugging step
+        return formatted_data
+
+
+
     def fetch_data(self, symbol):
         """Fetch and process data for a given symbol."""
         for attempt in range(self.max_retries):

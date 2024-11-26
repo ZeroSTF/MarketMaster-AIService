@@ -58,7 +58,27 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
             logger.error(f"Error in test_fetch for {symbol}: {str(e)}")
             return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/assets/history', methods=['GET'])
+    def get_market_data_between_dates():
+        try:
+           start = request.args.get('start')
+           end = request.args.get('end')
+           symbols = request.args.getlist('symbols')  # Capture list of symbols
 
+           if not start or not end or not symbols:
+               return jsonify({'error': 'Start date, end date, and at least one symbol are required'}), 400
+
+           start_date = datetime.fromisoformat(start)
+           end_date = datetime.fromisoformat(end)
+
+        # Fetch historical data for each symbol
+           data = asset_manager.get_historical_data(start_date, end_date, symbols)
+           logger.info(f"Returning data: {data}")  # Debugging step
+           return jsonify(data), 200
+        except Exception as e:
+           logger.error(f"Error in get_market_data_between_dates: {str(e)}")
+           return jsonify({'error': str(e)}), 500
     @socketio.on('connect')
     def handle_connect():
         logger.info("Client connected")

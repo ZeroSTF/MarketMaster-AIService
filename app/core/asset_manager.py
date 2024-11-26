@@ -58,6 +58,20 @@ class AssetManager:
         """Get current data for all registered assets."""
         with self._lock:
             return list(self.asset_cache.values())
+        
+    def get_historical_data(self, start_date, end_date, symbols):
+       historical_data = {}
+       logger.info(f"Requested symbols: {symbols}")  # Debugging step
+       with self._lock:
+        for symbol in symbols:
+            data = self.data_fetcher.fetch_data_between(symbol, start_date, end_date)
+            if data:
+                historical_data[symbol] = data
+            else:
+                logger.warning(f"No data for symbol {symbol}")  # Debugging step
+       logger.info(f"Historical data: {historical_data}")  # Debugging step
+       return historical_data
+
 
     def get_asset(self, symbol):
         """Get current data for a specific asset."""
@@ -71,3 +85,5 @@ class AssetManager:
                 del self.asset_cache[symbol]
                 return True
             return False
+        
+    
