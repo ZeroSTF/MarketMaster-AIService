@@ -79,6 +79,43 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
            logger.error(f"Error in get_market_data_between_dates: {str(e)}")
            return jsonify({'error': str(e)}), 500
+        
+    @app.route('/api/assets/news', methods=['GET'])
+    def get_news_between_dates():
+      try:
+        # Get query parameters
+        start = request.args.get('start')
+        end = request.args.get('end')
+        symbols = request.args.getlist('symbols')
+
+        # Check if parameters are missing
+        if not start or not end or not symbols:
+            return jsonify({'error': 'Start date, end date, and at least one symbol are required'}), 400
+
+        # Convert the start and end date strings to datetime objects
+        start_date = datetime.fromisoformat(start).date()
+        end_date = datetime.fromisoformat(end).date()
+
+        # Dictionary to store news data for each symbol
+        news_data = {}
+
+        # Fetch news for each symbol
+        for symbol in symbols:
+            news = asset_manager.fetch_finnhub_news(symbol, start_date, end_date)
+            if news:
+                news_data[symbol] = news
+            else:
+                news_data[symbol] = []
+
+        # Return the news data as JSON
+        return jsonify(news_data), 200
+
+      except Exception as e:
+        logger.error(f"Error in get_news_between_dates: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+
     @socketio.on('connect')
     def handle_connect():
         logger.info("Client connected")

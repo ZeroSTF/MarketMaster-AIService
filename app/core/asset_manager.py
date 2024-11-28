@@ -1,6 +1,9 @@
 import threading
 from ..utils.logger import logger
 from datetime import datetime
+import yfinance as yf
+import requests
+API_KEY = 'ct4875pr01qo7vqaigpgct4875pr01qo7vqaigq0'
 
 class AssetManager:
     def __init__(self, data_fetcher, socketio):
@@ -8,6 +11,7 @@ class AssetManager:
         self.socketio = socketio
         self.asset_cache = {}
         self._lock = threading.Lock()
+
 
     def register_assets(self, symbols):
         """Register new assets for tracking."""
@@ -71,6 +75,25 @@ class AssetManager:
                 logger.warning(f"No data for symbol {symbol}")  # Debugging step
        logger.info(f"Historical data: {historical_data}")  # Debugging step
        return historical_data
+    
+    def fetch_finnhub_news(self, symbol, start_date, end_date):
+        url = 'https://finnhub.io/api/v1/company-news'
+        params = {
+            'symbol': symbol,
+            'from': start_date,
+            'to': end_date,
+            'token': API_KEY  # Use the global API_KEY
+        }
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return None
+
+
+
+
+
 
 
     def get_asset(self, symbol):
