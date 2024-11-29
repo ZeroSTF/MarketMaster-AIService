@@ -27,6 +27,52 @@ class YFinanceDataFetcher:
                     raise
                 time.sleep(Config.RETRY_DELAY)
 
+    def fetch_historical_data(self, symbol, timeframe='1D', period='1mo'):
+        """Fetch historical OHLCV data"""
+        try:
+            ticker = yf.Ticker(symbol)
+            # Convert timeframe to yfinance interval format
+            interval_map = {
+                '1': '1m',
+                '5': '5m',
+                '15': '15m',
+                '30': '30m',
+                '60': '1h',
+                '240': '4h',
+                'D': '1d',
+                'W': '1wk',
+                'M': '1mo'
+            }
+            interval = interval_map.get(timeframe, '1d')
+            
+            # Adjust period based on interval to get enough data
+            period_map = {
+                '1m': '5d',
+                '5m': '5d',
+                '15m': '5d',
+                '30m': '5d',
+                '1h': '2y',
+                '4h': 'max',
+                '1d': 'max',
+                '1wk': 'max',
+                '1mo': 'max'
+            }
+            hist_period = period_map.get(interval, '1mo')
+            
+            hist = ticker.history(period=hist_period, interval=interval)
+            
+            return [{
+                'time': int(date.timestamp()),
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': float(row['Volume'])
+            } for date, row in hist.iterrows()]
+        except Exception as e:
+            logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
+            raise
+
     def _process_data(self, symbol, info, hist):
         """Process raw YFinance data into standardized format."""
         try:

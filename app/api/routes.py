@@ -126,36 +126,6 @@ def register_routes(app, socketio, asset_manager):
             logger.error(f"Error in get_prediction_status: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
-    @app.route('/api/assets/<symbol>/history', methods=['GET'])
-    def get_asset_history(symbol):
-        try:
-        # Map timeframe to yfinance interval
-            timeframe = request.args.get('timeframe', 'D')
-            timeframe_mapping = {
-            'D': '1d',
-            'W': '1wk',
-            'M': '1mo'
-        }
-            interval = timeframe_mapping.get(timeframe, '1d')
-        
-        # Fetch historical data
-            data = asset_manager.data_fetcher.fetch_historical_data(symbol, interval=interval)
-        
-            if not data or 'data' not in data or len(data['data']) == 0:
-                raise ValueError(f"No historical data found for {symbol}")
-
-        # Return response
-            return jsonify({
-            'symbol': symbol,
-            'timeframe': timeframe,
-            'data': data
-            })
-        except ValueError as ve:
-            logger.warning(f"ValueError in get_asset_history: {str(ve)}")
-            return jsonify({'error': str(ve)}), 404
-        except Exception as e:
-            logger.error(f"Error in get_asset_history: {str(e)}")
-            return jsonify({'error': str(e)}), 500
     @app.route('/api/assets/<symbol>/metrics', methods=['GET'])
     def get_asset_metrics(symbol):
         try:
@@ -177,8 +147,20 @@ def register_routes(app, socketio, asset_manager):
             logger.error(f"Error in get_asset_metrics: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
+    @app.route('/api/assets/<symbol>/history', methods=['GET'])
+    def get_asset_history(symbol):
+        try:
+            timeframe = request.args.get('timeframe', 'D')
+            data = asset_manager.data_fetcher.fetch_historical_data(symbol, timeframe)
+            return jsonify({
+                'symbol': symbol,
+                'timeframe': timeframe,
+                'data': data
+            })
+        except Exception as e:
+            logger.error(f"Error in get_asset_history: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
-    # WebSocket events
     @socketio.on('connect')
     def handle_connect():
         logger.info("Client connected")
