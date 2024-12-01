@@ -3,10 +3,49 @@ from datetime import datetime
 import time
 from ..utils.logger import logger
 from ..config.settings import Config
+import requests
+API_KEY = 'ct4875pr01qo7vqaigpgct4875pr01qo7vqaigq0'
 
 class YFinanceDataFetcher:
     def __init__(self, max_retries=Config.MAX_RETRIES):
         self.max_retries = max_retries
+
+    
+    def get_historical_data(self, symbols, start_date, end_date):
+        """Fetch historical data for a list of symbols."""
+        historical_data = {}
+        logger.info(f"Fetching historical data for symbols: {symbols}")
+        for symbol in symbols:
+            try:
+                data = self.fetch_data_between(symbol, start_date, end_date)
+                if data:
+                    historical_data[symbol] = data
+                else:
+                    logger.warning(f"No data for symbol {symbol}")
+            except Exception as e:
+                logger.error(f"Failed to fetch historical data for {symbol}: {e}")
+        logger.info(f"Historical data fetched: {historical_data}")
+        return historical_data
+
+    def fetch_finnhub_news(self, symbol, start_date, end_date):
+        """Fetch news for a symbol within a date range from Finnhub API."""
+        url = 'https://finnhub.io/api/v1/company-news'
+        params = {
+            'symbol': symbol,
+            'from': start_date,
+            'to': end_date,
+            'token': API_KEY
+        }
+        try:
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.error(f"Failed to fetch news for {symbol}: {response.status_code}")
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching news for {symbol}: {e}")
+            return None
 
     def fetch_data_between(self, symbol, start_date, end_date, interval="15m"):
        ticker = yf.Ticker(symbol)
