@@ -19,7 +19,7 @@ def create_app():
         asset_manager = AssetManager(data_fetcher, socketio)
         
         # Register routes and start scheduler
-        register_routes(app, socketio, asset_manager)
+        register_routes(app, socketio, asset_manager,data_fetcher)
         init_scheduler(app, asset_manager)
         
         logger.info("Application initialized successfully")

@@ -1,6 +1,8 @@
 import threading
 from ..utils.logger import logger
 from datetime import datetime
+import yfinance as yf
+import requests
 
 class AssetManager:
     def __init__(self, data_fetcher, socketio):
@@ -8,6 +10,7 @@ class AssetManager:
         self.socketio = socketio
         self.asset_cache = {}
         self._lock = threading.Lock()
+
 
     def register_assets(self, symbols):
         """Register new assets for tracking."""
@@ -58,6 +61,14 @@ class AssetManager:
         """Get current data for all registered assets."""
         with self._lock:
             return list(self.asset_cache.values())
+        
+    
+
+
+
+
+
+
 
     def get_asset(self, symbol):
         """Get current data for a specific asset."""
@@ -71,3 +82,5 @@ class AssetManager:
                 del self.asset_cache[symbol]
                 return True
             return False
+        
+    
