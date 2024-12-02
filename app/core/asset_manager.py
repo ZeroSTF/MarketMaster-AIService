@@ -61,14 +61,6 @@ class AssetManager:
         """Get current data for all registered assets."""
         with self._lock:
             return list(self.asset_cache.values())
-        
-    
-
-
-
-
-
-
 
     def get_asset(self, symbol):
         """Get current data for a specific asset."""
@@ -82,5 +74,3 @@ class AssetManager:
                 del self.asset_cache[symbol]
                 return True
             return False
-        
-    

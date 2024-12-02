@@ -6,6 +6,7 @@ from .utils.scheduler import init_scheduler
 from .utils.logger import logger
 from .core.data_fetcher import YFinanceDataFetcher
 from .core.asset_manager import AssetManager
+from .core.news_fetcher import FinnhubNewsFetcher
 from .config.settings import Config
 
 def create_app():
@@ -16,10 +17,11 @@ def create_app():
         
         # Initialize core components
         data_fetcher = YFinanceDataFetcher()
+        news_fetcher = FinnhubNewsFetcher(Config.FINNHUB_API_KEY)
         asset_manager = AssetManager(data_fetcher, socketio)
         
         # Register routes and start scheduler
-        register_routes(app, socketio, asset_manager,data_fetcher)
+        register_routes(app, socketio, asset_manager, news_fetcher)
         init_scheduler(app, asset_manager)
         
         logger.info("Application initialized successfully")

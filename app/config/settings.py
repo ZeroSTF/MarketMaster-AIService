@@ -14,3 +14,6 @@ class Config:
     # Logging settings
     LOG_LEVEL = 'DEBUG'
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+    # Finnhub settings
+    FINNHUB_API_KEY = 'ct4875pr01qo7vqaigpgct4875pr01qo7vqaigq0'
