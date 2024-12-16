@@ -151,8 +151,7 @@ def register_routes(app, socketio, asset_manager):
             logger.error(f"Error in get_prediction_status: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
-<<<<<<< HEAD
-=======
+
     @app.route('/api/assets/<symbol>/history', methods=['GET'])
     def get_asset_history(symbol):
         try:
@@ -221,7 +220,7 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
             logger.error(f"Error in get_close_dates: {str(e)}")
             return jsonify({'error': str(e)}), 500
->>>>>>> f736985 (AI)
+
     @app.route('/api/assets/<symbol>/metrics', methods=['GET'])
     def get_asset_metrics(symbol):
         try:
@@ -242,9 +241,8 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
             logger.error(f"Error in get_asset_metrics: {str(e)}")
             return jsonify({'error': str(e)}), 500
-<<<<<<< HEAD
-    
-    @app.route('/api/assets/<symbol>/history', methods=['GET'])
+
+    #@app.route('/api/assets/<symbol>/history', methods=['GET'])
     def get_asset_history(symbol):
         try:
             timeframe = request.args.get('timeframe', 'D')
@@ -257,7 +255,7 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
             logger.error(f"Error in get_asset_history: {str(e)}")
             return jsonify({'error': str(e)}), 500
-=======
+
     @app.route('/api/performance', methods=['POST'])
     def calculate_performance():
         try:
@@ -375,7 +373,6 @@ def register_routes(app, socketio, asset_manager):
             return jsonify({"error": str(e)}), 500
 
 
->>>>>>> f736985 (AI)
 
     @socketio.on('connect')
     def handle_connect():
