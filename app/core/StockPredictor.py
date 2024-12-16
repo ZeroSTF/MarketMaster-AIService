@@ -13,7 +13,18 @@ class StockPredictor:
     def __init__(self):
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.models = {}
-    
+    def load_model(self, symbol):
+        """
+        Load a pre-trained model for a given symbol
+        
+        :param symbol: Stock symbol
+        :return: Loaded Keras model
+        """
+        model_path = os.path.join('models', f'{symbol}_model.h5')
+        if not os.path.exists(model_path):
+            return None
+        
+        return load_model(model_path)
     def fetch_data(self, symbol, days=365):
         """
         Fetch historical stock data for a given symbol
@@ -115,13 +126,14 @@ class StockPredictor:
             logging.error(f"Error training model for {symbol}: {str(e)}")
             return {'error': str(e)}
 
-    def make_predictions(self, data, model=None, symbol=None):
+    def make_predictions(self, data, model=None, symbol=None, future_days=14):
         """
-        Make price predictions
+        Make multi-day price predictions with corresponding dates.
         
         :param data: Historical stock data
         :param model: Keras model (optional)
         :param symbol: Stock symbol (optional)
+        :param future_days: Number of days to predict into the future
         :return: Dictionary with prediction results
         """
         try:
@@ -139,27 +151,41 @@ class StockPredictor:
             last_60_days = last_60_days.reshape(-1, 1)
             scaled_last_60_days = self.scaler.transform(last_60_days)
 
-            # Prepare input for prediction
-            x_test = np.array([scaled_last_60_days])
-            x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+            # Predict prices for the future_days
+            predictions = []
+            dates = []
+            input_sequence = scaled_last_60_days
 
-            # Predict price
-            predicted_price = model.predict(x_test)
-            predicted_price = self.scaler.inverse_transform(predicted_price)
+            # Start predicting from the next day
+            last_date = data.index[-1]
+            for i in range(future_days):
+                # Prepare input for prediction
+                x_test = np.array([input_sequence])
+                x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+
+                # Predict price
+                predicted_price = model.predict(x_test)
+                predicted_price_unscaled = self.scaler.inverse_transform(predicted_price)
+                predictions.append(float(predicted_price_unscaled[0, 0]))
+
+                # Update the sequence with the predicted value
+                new_input = np.append(input_sequence[1:], predicted_price, axis=0)
+                input_sequence = new_input
+
+                # Add corresponding date
+                next_date = last_date + timedelta(days=i + 1)
+                dates.append(next_date.strftime('%Y-%m-%d'))
 
             # Get current price
             current_price = data['Close'].values[-1]
 
             return {
                 'current_price': float(current_price),
-                'predicted_price': float(predicted_price[0, 0]),
-                'predicted_change': float(((predicted_price[0, 0] - current_price) / current_price) * 100)
+                'predicted_prices': [{'date': dates[i], 'price': predictions[i]} for i in range(future_days)],
+                'predicted_change': float(((predictions[-1] - current_price) / current_price) * 100)
             }
-        
+
         except Exception as e:
             logging.error(f"Error making predictions: {str(e)}")
             return {'error': str(e)}
-
-
-
 
