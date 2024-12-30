@@ -74,3 +74,16 @@ class AssetManager:
                 del self.asset_cache[symbol]
                 return True
             return False
+        
+    def get_assets_by_symbols(self, symbols):
+        with self._lock:
+            if not symbols:
+                return []
+
+        assets = [self.asset_cache[symbol] for symbol in symbols if symbol in self.asset_cache]
+        missing_symbols = [symbol for symbol in symbols if symbol not in self.asset_cache]
+
+        if missing_symbols:
+            logger.warning(f"Assets not found for symbols: {missing_symbols}")
+
+        return assets

@@ -2,7 +2,7 @@ class Config:
     # Server settings
     HOST = '0.0.0.0'
     PORT = 5000
-    DEBUG = True
+    DEBUG = False
 
     # YFinance settings
     MAX_RETRIES = 3
@@ -12,7 +12,7 @@ class Config:
     UPDATE_INTERVAL = 5  # seconds
 
     # Logging settings
-    LOG_LEVEL = 'DEBUG'
+    LOG_LEVEL = 'INFO'
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
     # Finnhub settings
