@@ -1,21 +1,17 @@
 from flask import jsonify, request
 from ..utils.logger import logger
-import logging
 import traceback
 import os
 import json
 import pandas as pd
-import numpy as np
 from datetime import datetime
 from ..core.prediction_service import PredictionService
 from ..core.StockPredictor import StockPredictor
 from ..core.calculate_asset_metrics import calculate_asset_metrics
 from ..core.calculate_asset_metrics import generate_recommendations
-def register_routes(app, socketio, asset_manager):
-    # Initialize PredictionService
-    prediction_service = PredictionService()
-    stock_predictor = StockPredictor()
-    # Existing routes
+
+def register_routes(app, socketio, asset_manager, news_fetcher, prediction_service, stock_predictor):
+
     @app.route('/api/assets/register', methods=['POST'])
     def register_assets():
         try:
@@ -70,6 +66,53 @@ def register_routes(app, socketio, asset_manager):
             })
         except Exception as e:
             logger.error(f"Error in test_fetch for {symbol}: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/assets/history', methods=['GET'])
+    def get_market_data_between_dates():
+      try:
+        start = request.args.get('start')
+        end = request.args.get('end')
+        symbols = request.args.getlist('symbols')  # Capture list of symbols
+
+        if not start or not end or not symbols:
+            return jsonify({'error': 'Start date, end date, and at least one symbol are required'}), 400
+
+        # Convert start and end date to datetime objects
+        start_date = datetime.fromisoformat(start)
+        end_date = datetime.fromisoformat(end)
+
+        # Debugging step to log inputs
+        logger.info(f"Fetching historical data for symbols: {symbols} from {start_date} to {end_date}")
+
+        # Use data_fetcher to get historical data
+        data = asset_manager.data_fetcher.get_game_data(start_date=start_date, end_date=end_date, symbols=symbols)
+        logger.info(f"Returning historical data: {data}")
+        return jsonify(data), 200
+      except Exception as e:
+        logger.error(f"Error in get_market_data_between_dates: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+        
+    @app.route('/api/assets/news', methods=['GET'])
+    def get_news_between_dates():
+        try:
+            start = request.args.get('start')
+            end = request.args.get('end')
+            symbols = request.args.getlist('symbols')
+            
+            if not start or not end or not symbols:
+                return jsonify({'error': 'Start date, end date, and at least one symbol are required'}), 400
+            
+            start_date = datetime.fromisoformat(start).date().isoformat()
+            end_date = datetime.fromisoformat(end).date().isoformat()
+            
+            news_data = news_fetcher.fetch_multiple_symbol_news(symbols, start_date, end_date)
+            
+            return jsonify(news_data), 200
+        
+        except Exception as e:
+            logger.error(f"Error in get_news_between_dates: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
     # New prediction routes
@@ -155,17 +198,24 @@ def register_routes(app, socketio, asset_manager):
     @app.route('/api/assets/<symbol>/history', methods=['GET'])
     def get_asset_history(symbol):
         try:
+            timeframe = request.args.get('timeframe', 'D')
+            data = asset_manager.data_fetcher.fetch_historical_data(symbol, timeframe)
+            return jsonify({
+                'symbol': symbol,
+                'timeframe': timeframe,
+                'data': data
+            })
+        except Exception as e:
+            logger.error(f"Error in get_asset_history: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+    # HELPER FUNCTION FOR CHOHDI
+    def get_asset_history_chohdi(symbol):
+        try:
         # Map timeframe to yfinance interval
             timeframe = request.args.get('timeframe', 'D')
-            timeframe_mapping = {
-            'D': '1d',
-            'W': '1wk',
-            'M': '1mo'
-        }
-            interval = timeframe_mapping.get(timeframe, '1d')
-        
-        # Fetch historical data
-            data = asset_manager.data_fetcher.fetch_historical_data(symbol, interval=interval)
+
+            data = asset_manager.data_fetcher.fetch_historical_data(symbol, timeframe, '2y', True)
         
             if not data or 'data' not in data or len(data['data']) == 0:
                 raise ValueError(f"No historical data found for {symbol}")
@@ -182,24 +232,16 @@ def register_routes(app, socketio, asset_manager):
         except Exception as e:
             logger.error(f"Error in get_asset_history: {str(e)}")
             return jsonify({'error': str(e)}), 500
+    ##############################################################################################################################
 
     @app.route('/api/assets/<symbol>/close_dates', methods=['GET'])
     def get_close_dates(symbol):
         try:
             # Map timeframe to yfinance interval
             timeframe = request.args.get('timeframe', 'D')
-            timeframe_mapping = {
-                'D': '1d',
-                'W': '1wk',
-                'M': '1mo'
-            }
-            interval = timeframe_mapping.get(timeframe, '1d')
 
             # Fetch historical data
-            data = asset_manager.data_fetcher.fetch_historical_data(symbol, interval=interval)
-
-            if not data or 'data' not in data or len(data['data']) == 0:
-                raise ValueError(f"No historical data found for {symbol}")
+            data = asset_manager.data_fetcher.fetch_historical_data(symbol, timeframe, '2y', True)
 
             # Extract close and date
             close_date_list = [
@@ -225,7 +267,7 @@ def register_routes(app, socketio, asset_manager):
     def get_asset_metrics(symbol):
         try:
         # Call the existing function to fetch historical data
-            response = get_asset_history(symbol)
+            response = get_asset_history_chohdi(symbol)
             data = response.get_json()
 
             if 'error' in data:
@@ -286,7 +328,7 @@ def register_routes(app, socketio, asset_manager):
             
             for symbol in symbols:
                 # Fetch historical data
-                response = get_asset_history(symbol)
+                response = get_asset_history_chohdi(symbol)
                 response_data = response.json
                 
                 if "error" in response_data:
@@ -329,7 +371,7 @@ def register_routes(app, socketio, asset_manager):
     def asset_recommendations(symbol):
         try:
             # Fetch historical data for the asset
-            historical_data_response = get_asset_history(symbol)
+            historical_data_response = get_asset_history_chohdi(symbol)
             historical_data = historical_data_response.get_json()  # Extract the JSON payload
             
             if 'error' in historical_data:
