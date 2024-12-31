@@ -11,3 +11,4 @@ colorlog
 pandas
 tensorflow
 numpy
+scikit-learn
