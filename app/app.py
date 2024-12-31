@@ -7,7 +7,7 @@ from .utils.logger import logger
 from .core.data_fetcher import YFinanceDataFetcher
 from .core.asset_manager import AssetManager
 from .config.settings import Config
-
+from .core.OptionsPredictionModel import OptionsPredictionModel
 def create_app():
     try:
         app = Flask(__name__)

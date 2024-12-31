@@ -54,7 +54,7 @@ class YFinanceDataFetcher:
                 '1h': '1mo',
                 '4h': '1mo',
                 '1d': '3mo',
-                '1wk': '1y',
+                '1wk': '1y',    
                 '1mo': '2y'
             }
             hist_period = period_map.get(interval, '1mo')
