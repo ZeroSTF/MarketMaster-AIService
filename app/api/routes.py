@@ -5,8 +5,6 @@ import os
 import json
 import pandas as pd
 from datetime import datetime
-from ..core.prediction_service import PredictionService
-from ..core.StockPredictor import StockPredictor
 from ..core.calculate_asset_metrics import calculate_asset_metrics
 from ..core.calculate_asset_metrics import generate_recommendations
 
