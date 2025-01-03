@@ -1,5 +1,3 @@
-from app.core import OptionsPredictionModel
-from app.core.acturial_calcul import ActuarialCalculator
 from flask import jsonify, request
 from ..utils.logger import logger
 import traceback
@@ -10,10 +8,8 @@ from datetime import datetime
 from ..core.calculate_asset_metrics import calculate_asset_metrics
 from ..core.calculate_asset_metrics import generate_recommendations
 
-def register_routes(app, socketio, asset_manager, news_fetcher, prediction_service, stock_predictor):
-    actuarial_calculator = ActuarialCalculator(asset_manager=asset_manager)
-    predictor = OptionsPredictionModel(asset_manager, actuarial_calculator)
-    
+def register_routes(app, socketio, asset_manager, news_fetcher, prediction_service, stock_predictor, actuarial_calculator, predictor):
+
     @app.route('/api/assets/register', methods=['POST'])
     def register_assets():
         try:
@@ -84,6 +80,7 @@ def register_routes(app, socketio, asset_manager, news_fetcher, prediction_servi
         except Exception as e:
             logger.error(f"Error calculating premiums: {str(e)}")
             return jsonify({'error': str(e)}), 500
+
     @app.route('/api/assets/calculate_option_premium', methods=['POST'])
     def calculate_option_premium():
         try:
@@ -118,6 +115,9 @@ def register_routes(app, socketio, asset_manager, news_fetcher, prediction_servi
 
             # Retourner la prime calculée
             return jsonify({'symbol': symbol, 'option_type': option_type, 'premium': premium}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     @app.route('/api/assets/history', methods=['GET'])
     def get_market_data_between_dates():
       try:
@@ -143,7 +143,7 @@ def register_routes(app, socketio, asset_manager, news_fetcher, prediction_servi
         logger.error(f"Error in get_market_data_between_dates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-        
+
     @app.route('/api/assets/news', methods=['GET'])
     def get_news_between_dates():
         try:
