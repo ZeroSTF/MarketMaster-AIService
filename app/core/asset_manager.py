@@ -1,6 +1,8 @@
 import threading
 from ..utils.logger import logger
 from datetime import datetime
+import yfinance as yf
+import requests
 
 class AssetManager:
     def __init__(self, data_fetcher, socketio):
@@ -8,6 +10,7 @@ class AssetManager:
         self.socketio = socketio
         self.asset_cache = {}
         self._lock = threading.Lock()
+
 
     def register_assets(self, symbols):
         """Register new assets for tracking."""
@@ -87,3 +90,16 @@ class AssetManager:
             except Exception as e:
                 logger.error(f"Failed to fetch historical data for {symbol}: {str(e)}")
                 return None    
+        
+    def get_assets_by_symbols(self, symbols):
+        with self._lock:
+            if not symbols:
+                return []
+
+        assets = [self.asset_cache[symbol] for symbol in symbols if symbol in self.asset_cache]
+        missing_symbols = [symbol for symbol in symbols if symbol not in self.asset_cache]
+
+        if missing_symbols:
+            logger.warning(f"Assets not found for symbols: {missing_symbols}")
+
+        return assets
