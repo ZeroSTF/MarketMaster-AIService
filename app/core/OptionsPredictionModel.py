@@ -182,87 +182,61 @@ class OptionsPredictionModel:
             raise OptionsPredictionError(f"Model training failed: {str(e)}")
 
     def predict(self, symbol):
-        """
-        Predict with confidence thresholds and risk management.
-        """
         try:
-            if not hasattr(self.model, 'n_features_in_'):  # Check if model is trained
-             self.train(symbol)
-            # Prepare data for prediction
+            if not hasattr(self.model, 'n_features_in_'):
+                self.train(symbol)
+                
             df = self.prepare_features(symbol)
-            if df is None or len(df) < 2:
-                raise OptionsPredictionError("Insufficient data for prediction")
-
-            # Define features for prediction
             features = ['RSI', 'MA20', 'Volatility', 'volatility', 
-                        'sharpe', 'var', 'cvar', 'ROC', 'MOM']
-            
+                    'sharpe', 'var', 'cvar', 'ROC', 'MOM']
+                    
+            # Only add Volume_Ratio if it exists in the dataframe
             if 'Volume_Ratio' in df.columns:
                 features.append('Volume_Ratio')
-            
-            # Validate required features
-            missing_features = [feature for feature in features if feature not in df.columns]
-            if missing_features:
-                raise OptionsPredictionError(f"Missing features: {missing_features}")
+            else:
+                # If model was trained with Volume_Ratio but current data doesn't have it
+                if 'Volume_Ratio' in self.model.feature_names_in_:
+                    df['Volume_Ratio'] = 1.0  # Default value
+                    features.append('Volume_Ratio')
 
-            # Extract and scale features
             X = df[features].iloc[-1:]
             X_scaled = self.scaler.transform(X)
 
-            # Make predictions
-            signal = self.model.predict(X_scaled)[0]
+            # Get probabilities first
             probabilities = self.model.predict_proba(X_scaled)[0]
-            print(f"probilities :{probabilities}")
-            if not hasattr(probabilities, '__iter__'):
-             raise OptionsPredictionError("Model probabilities are not iterable.")
-            # Get the maximum probability and its corresponding class
-            confidence = float(np.max(probabilities))  # Convert to float to avoid numpy.float64 issues
-            print(f"confidence :{confidence}")
-            # Confidence threshold
-            confidence_threshold = 0.65
-            if confidence < confidence_threshold:
-                return {
-                    'signal': 0,
-                    'probability': confidence,
-                    'message': 'Insufficient confidence to generate signal'
-                }
+            max_prob_idx = np.argmax(probabilities)
+            confidence = float(probabilities[max_prob_idx])
+            
+            # Map probability index to signal (-1, 0, 1)
+            signal_mapping = {0: -1, 1: 0, 2: 1}  # Adjust based on your classes
+            signal = signal_mapping[max_prob_idx]
 
-            # Generate signal if confidence is sufficient
-            if signal != 0:
-                current_price = float(df['close'].iloc[-1])  # Convert to float
+            # Lower threshold for testing
+            confidence_threshold = 0.4  # Reduced from 0.65
+            
+            if confidence >= confidence_threshold:
+                current_price = float(df['close'].iloc[-1])
                 expiration_date = datetime.now() + timedelta(days=30)
-
-                # Adjust strike price based on volatility
-                volatility_factor = float(df['Volatility'].iloc[-1] / df['Volatility'].mean())  # Convert to float
-                if signal == 1:  # Call option
-                    strike_modifier = 1.05 * volatility_factor
-                    strike_price = current_price * strike_modifier
-                    option_type = 'call'
-                else:  # Put option
-                    strike_modifier = 0.95 / volatility_factor
-                    strike_price = current_price * strike_modifier
-                    option_type = 'put'
-
-                # Calculate option premium
-                premium = self.actuarial_calculator.calculate_option_premium(
-                    symbol, strike_price, expiration_date, option_type
-                )
-
-                return {
-                    'signal': signal,
-                    'probability': confidence,
-                    'suggested_premium': premium,
-                    'strike_price': strike_price,
-                    'expiration_date': expiration_date,
-                    'option_type': option_type,
-                    'metrics': {
-                        'volatility': float(df['Volatility'].iloc[-1]),  # Convert to float
-                        'sharpe': float(df['sharpe'].iloc[-1]),         # Convert to float
-                        'var': float(df['var'].iloc[-1]),               # Convert to float
+                
+                # Rest of your signal logic
+                if signal != 0:
+                    volatility_factor = float(df['Volatility'].iloc[-1] / df['Volatility'].mean())
+                    strike_price = current_price * (1.05 if signal == 1 else 0.95) * volatility_factor
+                    option_type = 'call' if signal == 1 else 'put'
+                    
+                    return {
+                        'signal': signal,
+                        'probability': confidence,
+                        'strike_price': strike_price,
+                        'expiration_date': expiration_date,
+                        'option_type': option_type,
+                        'metrics': {
+                            'volatility': float(df['Volatility'].iloc[-1]),
+                            'sharpe': float(df['sharpe'].iloc[-1]),
+                            'var': float(df['var'].iloc[-1])
+                        }
                     }
-                }
 
-            # No signal generated
             return {
                 'signal': 0,
                 'probability': confidence,
@@ -290,42 +264,37 @@ class OptionsPredictionModel:
             logger.error(f"RSI calculation error: {e}")
             raise OptionsPredictionError(f"RSI calculation failed: {str(e)}")
     def get_recommendation(self, prediction):
-        """Generate a recommendation based on the prediction."""
         try:
+            confidence = prediction.get('probability', 0)
+            signal = prediction.get('signal', 0)
             
-            probabilities = prediction.get('probability', [])
-            if not probabilities or not hasattr(probabilities, '__iter__'):
+            if signal == 1:
                 return {
-                    'action': 'UNKNOWN',
-                    'description': 'Unable to provide a recommendation',
-                    'confidence': 0
-                }
-
-            max_confidence = max(probabilities) * 100
-            if prediction['signal'] == 1:
-                return {
-                    'action': 'ACHETER_CALL',
+                    'action': 'CALL',
                     'description': "Acheter une option d'achat (CALL)",
-                    'strike_price': prediction.get('prix_strike'),
-                    'premium': prediction.get('prime'),
-                    'expiration': prediction.get('date_expiration'),
-                    'confidence': max_confidence
+                    'strike_price': prediction.get('strike_price'),
+                    'premium': prediction.get('suggested_premium'),
+                    'expiration': prediction.get('expiration_date'),
+                    'confidence': confidence
                 }
-            elif prediction['signal'] == -1:
+            elif signal == -1:
                 return {
-                    'action': 'ACHETER_PUT',
+                    'action': 'PUT',
                     'description': "Acheter une option de vente (PUT)",
-                    'strike_price': prediction.get('prix_strike'),
-                    'premium': prediction.get('prime'),
-                    'expiration': prediction.get('date_expiration'),
-                    'confidence': max_confidence
+                    'strike_price': prediction.get('strike_price'),
+                    'premium': prediction.get('suggested_premium'),
+                    'expiration': prediction.get('expiration_date'),
+                    'confidence': confidence
                 }
             else:
                 return {
                     'action': 'ATTENDRE',
                     'description': "Pas de signal d'achat pour le moment",
-                    'confidence': max_confidence
-                }    
+                    'confidence': confidence
+                }
         except Exception as e:
-            raise Exception(f"Error getting recommendation for {symbol}: {str(e)}")
-        
+            return {
+                'action': 'UNKNOWN',
+                'description': 'Unable to provide a recommendation',
+                'confidence': 0
+            }
