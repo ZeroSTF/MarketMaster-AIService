@@ -186,6 +186,8 @@ class OptionsPredictionModel:
         Predict with confidence thresholds and risk management.
         """
         try:
+            if not hasattr(self.model, 'n_features_in_'):  # Check if model is trained
+             self.train(symbol)
             # Prepare data for prediction
             df = self.prepare_features(symbol)
             if df is None or len(df) < 2:
@@ -209,32 +211,29 @@ class OptionsPredictionModel:
 
             # Make predictions
             signal = self.model.predict(X_scaled)[0]
-            proba = self.model.predict_proba(X_scaled)[0]
-
-            # Debugging logs for probabilities
-            print(f"Predicted probabilities type: {type(proba)}, value: {proba}")
-
-            # Validate probabilities
-            if not isinstance(proba, np.ndarray):
-                raise OptionsPredictionError(f"Unexpected type for probabilities: {type(proba)}")
-
+            probabilities = self.model.predict_proba(X_scaled)[0]
+            print(f"probilities :{probabilities}")
+            if not hasattr(probabilities, '__iter__'):
+             raise OptionsPredictionError("Model probabilities are not iterable.")
+            # Get the maximum probability and its corresponding class
+            confidence = float(np.max(probabilities))  # Convert to float to avoid numpy.float64 issues
+            print(f"confidence :{confidence}")
             # Confidence threshold
             confidence_threshold = 0.65
-            confidence = max(proba)
             if confidence < confidence_threshold:
                 return {
                     'signal': 0,
-                    'probabilite': confidence,
-                    'message': 'Confiance insuffisante pour générer un signal'
+                    'probability': confidence,
+                    'message': 'Insufficient confidence to generate signal'
                 }
 
             # Generate signal if confidence is sufficient
             if signal != 0:
-                current_price = df['close'].iloc[-1]
+                current_price = float(df['close'].iloc[-1])  # Convert to float
                 expiration_date = datetime.now() + timedelta(days=30)
 
                 # Adjust strike price based on volatility
-                volatility_factor = df['Volatility'].iloc[-1] / df['Volatility'].mean()
+                volatility_factor = float(df['Volatility'].iloc[-1] / df['Volatility'].mean())  # Convert to float
                 if signal == 1:  # Call option
                     strike_modifier = 1.05 * volatility_factor
                     strike_price = current_price * strike_modifier
@@ -251,29 +250,28 @@ class OptionsPredictionModel:
 
                 return {
                     'signal': signal,
-                    'probabilite': confidence,
-                    'prime_suggeree': premium,
-                    'prix_strike': strike_price,
-                    'date_expiration': expiration_date,
-                    'type_option': option_type,
+                    'probability': confidence,
+                    'suggested_premium': premium,
+                    'strike_price': strike_price,
+                    'expiration_date': expiration_date,
+                    'option_type': option_type,
                     'metrics': {
-                        'volatility': df['Volatility'].iloc[-1],
-                        'sharpe': df['sharpe'].iloc[-1],
-                        'var': df['var'].iloc[-1],
+                        'volatility': float(df['Volatility'].iloc[-1]),  # Convert to float
+                        'sharpe': float(df['sharpe'].iloc[-1]),         # Convert to float
+                        'var': float(df['var'].iloc[-1]),               # Convert to float
                     }
                 }
 
             # No signal generated
             return {
                 'signal': 0,
-                'probabilite': confidence,
-                'message': 'Pas de signal d\'option pour le moment'
+                'probability': confidence,
+                'message': 'No option signal at this time'
             }
 
         except Exception as e:
             logger.error(f"Prediction error for {symbol}: {e}")
             raise OptionsPredictionError(f"Prediction failed: {str(e)}")
-
     def _calculate_rsi(self, prices, period=14):
         """
         Calculate RSI with error handling
@@ -291,3 +289,43 @@ class OptionsPredictionModel:
         except Exception as e:
             logger.error(f"RSI calculation error: {e}")
             raise OptionsPredictionError(f"RSI calculation failed: {str(e)}")
+    def get_recommendation(self, prediction):
+        """Generate a recommendation based on the prediction."""
+        try:
+            
+            probabilities = prediction.get('probability', [])
+            if not probabilities or not hasattr(probabilities, '__iter__'):
+                return {
+                    'action': 'UNKNOWN',
+                    'description': 'Unable to provide a recommendation',
+                    'confidence': 0
+                }
+
+            max_confidence = max(probabilities) * 100
+            if prediction['signal'] == 1:
+                return {
+                    'action': 'ACHETER_CALL',
+                    'description': "Acheter une option d'achat (CALL)",
+                    'strike_price': prediction.get('prix_strike'),
+                    'premium': prediction.get('prime'),
+                    'expiration': prediction.get('date_expiration'),
+                    'confidence': max_confidence
+                }
+            elif prediction['signal'] == -1:
+                return {
+                    'action': 'ACHETER_PUT',
+                    'description': "Acheter une option de vente (PUT)",
+                    'strike_price': prediction.get('prix_strike'),
+                    'premium': prediction.get('prime'),
+                    'expiration': prediction.get('date_expiration'),
+                    'confidence': max_confidence
+                }
+            else:
+                return {
+                    'action': 'ATTENDRE',
+                    'description': "Pas de signal d'achat pour le moment",
+                    'confidence': max_confidence
+                }    
+        except Exception as e:
+            raise Exception(f"Error getting recommendation for {symbol}: {str(e)}")
+        

@@ -173,7 +173,7 @@ def register_routes(app, socketio, asset_manager):
 
             # Obtenir la prédiction
             prediction = predictor.predict(symbol)
-            
+            recommendation = predictor.get_recommendation(prediction)
             if prediction is None:
                 return jsonify({
                     'status': 'error',
@@ -186,7 +186,7 @@ def register_routes(app, socketio, asset_manager):
                 'timestamp': datetime.now().isoformat(),
                 'prediction': prediction,
                 'current_price': asset_data.get('currentPrice'),
-                'recommendation': get_recommendation(prediction)
+                'recommendation': recommendation
             }
 
             return jsonify(response)
@@ -232,29 +232,4 @@ def register_routes(app, socketio, asset_manager):
                 'message': str(e)
             }), 500
 
-def get_recommendation(prediction):
-    """Génère une recommandation basée sur la prédiction"""
-    if prediction['signal'] == 1:
-        return {
-            'action': 'ACHETER_CALL',
-            'description': 'Acheter une option d\'achat (CALL)',
-            'strike_price': prediction.get('prix_strike'),
-            'premium': prediction.get('prime'),
-            'expiration': prediction.get('date_expiration'),
-            'confidence': max(prediction['probabilite']) * 100
-        }
-    elif prediction['signal'] == -1:
-        return {
-            'action': 'ACHETER_PUT',
-            'description': 'Acheter une option de vente (PUT)',
-            'strike_price': prediction.get('prix_strike'),
-            'premium': prediction.get('prime'),
-            'expiration': prediction.get('date_expiration'),
-            'confidence': max(prediction['probabilite']) * 100
-        }
-    else:
-        return {
-            'action': 'ATTENDRE',
-            'description': 'Pas de signal d\'achat pour le moment',
-            'confidence': max(prediction['probabilite']) * 100
-        }
+
