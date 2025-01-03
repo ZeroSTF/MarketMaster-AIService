@@ -74,6 +74,22 @@ class AssetManager:
                 del self.asset_cache[symbol]
                 return True
             return False
+
+    def get_historical_data(self, symbol, timeframe='1D', period='1mo'):
+        """Fetch historical price data for a registered asset."""
+        with self._lock:
+            if symbol not in self.asset_cache:
+                logger.error(f"Asset {symbol} is not registered.")
+                return None
+
+            try:
+                # Fetch the historical data for the symbol using the data fetcher
+                historical_data = self.data_fetcher.fetch_historical_data(symbol, timeframe, period)
+                logger.info(f"Successfully fetched historical data for {symbol}")
+                return historical_data
+            except Exception as e:
+                logger.error(f"Failed to fetch historical data for {symbol}: {str(e)}")
+                return None    
         
     def get_assets_by_symbols(self, symbols):
         with self._lock:
