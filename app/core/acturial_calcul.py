@@ -269,7 +269,7 @@ class ActuarialCalculator:
 
             # Enhance premium with administrative fee and profit margin
             admin_fee = 10  # Fixed administrative fee
-            profit_margin = 0.15  # 15% profit margin
+            profit_margin = 0.05  # 15% profit margin
 
             # Total premium calculation
             final_premium = base_premium * (1 + profit_margin) + admin_fee
